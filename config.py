@@ -72,7 +72,7 @@ class Config(object):
     RPN_ANCHOR_STRIDE = 1
 
     # Non-max suppression threshold to filter RPN proposals.
-    # You can reduce this during training to generate more propsals.
+    # You can increase this during training to generate more propsals.
     RPN_NMS_THRESHOLD = 0.7
 
     # How many anchors per image to use for RPN training
@@ -87,14 +87,17 @@ class Config(object):
     USE_MINI_MASK = True
     MINI_MASK_SHAPE = (56, 56)  # (height, width) of the mini-mask
 
-    # Input image resing
-    # Images are resized such that the smallest side is >= IMAGE_MIN_DIM and
-    # the longest side is <= IMAGE_MAX_DIM. In case both conditions can't
-    # be satisfied together the IMAGE_MAX_DIM is enforced.
+    # Input image resizing
+    # Images are resized such that the small side is IMAGE_MIN_DIM and
+    # the long side is <= IMAGE_MAX_DIM. If both conditions can't be
+    # satisfied at the same time then IMAGE_MAX_DIM is enforced.
+    # Resizing modes:
+    #     none: No resizing
+    #     square: Pad with zeros to make it a square (MAX_DIM, MAX_DIM)
+    # TODO: currently, only 'square' mode is supported
+    IMAGE_RESIZE_MODE = "square"
     IMAGE_MIN_DIM = 800
     IMAGE_MAX_DIM = 1024
-    # If True, pad images with zeros such that they're (max_dim by max_dim)
-    IMAGE_PADDING = True  # currently, the False option is not supported
 
     # Image mean (RGB)
     MEAN_PIXEL = np.array([123.7, 116.8, 103.9])
@@ -147,6 +150,15 @@ class Config(object):
     # the RPN. For example, to debug the classifier head without having to
     # train the RPN.
     USE_RPN_ROIS = True
+
+    # Train or freeze batch normalization layers
+    #     None: Train BN layers. This is the normal mode
+    #     False: Freeze BN layers. Good when using a small batch size
+    #     True: (don't use). Set layer in training mode even when inferencing
+    TRAIN_BN = False  # Defaulting to False since batch size is often small
+
+    # Gradient norm clipping
+    GRADIENT_CLIP_NORM = 5.0
 
     def __init__(self):
         """Set values of computed attributes."""
