@@ -14,16 +14,8 @@ The repository includes:
 * Example of training on your own dataset
 
 
-The code is documented and designed to be easy to extend. If you use it in your research, please consider referencing this repository. If you work on 3D vision, you might find our recently released [Matterport3D](https://matterport.com/blog/2017/09/20/announcing-matterport3d-research-dataset/) dataset useful as well.
+The code is documented and designed to be easy to extend. If you use it in your research, please consider citing this repository (bibtex below). If you work on 3D vision, you might find our recently released [Matterport3D](https://matterport.com/blog/2017/09/20/announcing-matterport3d-research-dataset/) dataset useful as well.
 This dataset was created from 3D-reconstructed spaces captured by our customers who agreed to make them publicly available for academic use. You can see more examples [here](https://matterport.com/gallery/).
-
-# Projects Using this Model
-If you extend this model to other datasets or build projects that use it, we'd love to hear from you.
-
-* [Images to OSM](https://github.com/jremillard/images-to-osm): Use TensorFlow, Bing, and OSM to find features in satellite images.
-The goal is to improve OpenStreetMap by adding high quality baseball, soccer, tennis, football, and basketball fields.
-* [4K Video Demo](https://www.youtube.com/watch?v=OOT3UIXZztE): A beautiful demo on 4K video, by Karol Majek.
-    [![Mask RCNN on 4K Video](assets/4k_video.gif)](https://www.youtube.com/watch?v=OOT3UIXZztE)
 
 # Getting Started
 * [demo.ipynb](samples/demo.ipynb) Is the easiest way to start. It shows an example of using a model pre-trained on MS COCO to segment objects in your own images.
@@ -34,19 +26,19 @@ It includes code to run object detection and instance segmentation on arbitrary 
 * ([model.py](mrcnn/model.py), [utils.py](mrcnn/utils.py), [config.py](mrcnn/config.py)): These files contain the main Mask RCNN implementation. 
 
 
-* [inspect_data.ipynb](samples/inspect_data.ipynb). This notebook visualizes the different pre-processing steps
+* [inspect_data.ipynb](samples/coco/inspect_data.ipynb). This notebook visualizes the different pre-processing steps
 to prepare the training data.
 
-* [inspect_model.ipynb](samples/inspect_model.ipynb) This notebook goes in depth into the steps performed to detect and segment objects. It provides visualizations of every step of the pipeline.
+* [inspect_model.ipynb](samples/coco/inspect_model.ipynb) This notebook goes in depth into the steps performed to detect and segment objects. It provides visualizations of every step of the pipeline.
 
-* [inspect_weights.ipynb](samples/inspect_weights.ipynb)
+* [inspect_weights.ipynb](samples/coco/inspect_weights.ipynb)
 This notebooks inspects the weights of a trained model and looks for anomalies and odd patterns.
 
 
 # Step by Step Detection
 To help with debugging and understanding the model, there are 3 notebooks 
-([inspect_data.ipynb](samples/inspect_data.ipynb), [inspect_model.ipynb](samples/inspect_model.ipynb),
-[inspect_weights.ipynb](samples/inspect_weights.ipynb)) that provide a lot of visualizations and allow running the model step by step to inspect the output at each point. Here are a few examples:
+([inspect_data.ipynb](samples/coco/inspect_data.ipynb), [inspect_model.ipynb](samples/coco/inspect_model.ipynb),
+[inspect_weights.ipynb](samples/coco/inspect_weights.ipynb)) that provide a lot of visualizations and allow running the model step by step to inspect the output at each point. Here are a few examples:
 
 
 
@@ -115,7 +107,10 @@ The training schedule, learning rate, and other parameters should be set in `sam
 
 
 # Training on Your Own Dataset
-To train the model on your own dataset you'll need to sub-class two classes:
+
+Start by reading this [blog post about the balloon color splash sample](https://engineering.matterport.com/splash-of-color-instance-segmentation-with-mask-r-cnn-and-tensorflow-7c761e238b46). It covers the process starting from annotating images to training to using the results in a sample application.
+
+In summary, to train the model on your own dataset you'll need to extend two classes:
 
 ```Config```
 This class contains the default configuration. Subclass it and modify the attributes you need to change.
@@ -127,9 +122,7 @@ the code of the model. It also supports loading multiple datasets at the
 same time, which is useful if the objects you want to detect are not 
 all available in one dataset. 
 
-The ```Dataset``` class itself is the base class. To use it, create a new
-class that inherits from it and adds functions specific to your dataset.
-See the base `Dataset` class in `utils.py` and examples of extending it in `samples/coco/train_shapes.ipynb` and `samples/coco/coco.py`.
+See examples in `samples/shapes/train_shapes.ipynb`, `samples/coco/coco.py`, `samples/balloon/balloon.py`, and `samples/nucleus/nucleus.py`.
 
 ## Differences from the Official Paper
 This implementation follows the Mask RCNN paper for the most part, but there are a few cases where we deviated in favor of code simplicity and generalization. These are some of the differences we're aware of. If you encounter other differences, please do let us know.
@@ -148,7 +141,18 @@ gradients (sum vs mean across batches and GPUs). Or, maybe the official model us
 clipping to avoid this issue. We do use gradient clipping, but don't set it too aggressively.
 We found that smaller learning rates converge faster anyway so we go with that.
 
-* **Anchor Strides:** The lowest level of the pyramid has a stride of 4px relative to the image, so anchors are created at every 4 pixel intervals. To reduce computation and memory load we adopt an anchor stride of 2, which cuts the number of anchors by 4 and doesn't have a significant effect on accuracy.
+## Citation
+Use this bibtex to cite this repository:
+```
+@misc{matterport_maskrcnn_2017,
+  title={Mask R-CNN for object detection and instance segmentation on Keras and TensorFlow},
+  author={Abdulla, Waleed},
+  year={2017},
+  publisher={Github},
+  journal={GitHub repository},
+  howpublished={\url{https://github.com/matterport/Mask_RCNN}},
+}
+```
 
 ## Contributing
 Contributions to this repository are welcome. Examples of things you can contribute:
@@ -191,6 +195,30 @@ If you use Docker, the code has been verified to work on
     * Windows: https://github.com/philferriere/cocoapi.
     You must have the Visual C++ 2015 build tools on your path (see the repo for additional details)
 
-## More Examples
-![Sheep](assets/sheep.png)
-![Donuts](assets/donuts.png)
+# Projects Using this Model
+If you extend this model to other datasets or build projects that use it, we'd love to hear from you.
+
+### [4K Video Demo](https://www.youtube.com/watch?v=OOT3UIXZztE) by Karol Majek.
+[![Mask RCNN on 4K Video](assets/4k_video.gif)](https://www.youtube.com/watch?v=OOT3UIXZztE)
+
+### [Images to OSM](https://github.com/jremillard/images-to-osm): Improve OpenStreetMap by adding baseball, soccer, tennis, football, and basketball fields.
+
+![Identify sport fields in satellite images](assets/images_to_osm.png)
+
+### [Splash of Color](https://engineering.matterport.com/splash-of-color-instance-segmentation-with-mask-r-cnn-and-tensorflow-7c761e238b46). A blog post explaining how to train this model from scratch and use it to implement a color splash effect.
+![Balloon Color Splash](assets/balloon_color_splash.gif)
+
+
+### [Segmenting Nuclei in Microscopy Images](samples/nucleus). Built for the [2018 Data Science Bowl](https://www.kaggle.com/c/data-science-bowl-2018)
+Code is in the `samples/nucleus` directory.
+
+![Nucleus Segmentation](assets/nucleus_segmentation.png)
+
+### [Detection and Segmentation for Surgery Robots](https://github.com/SUYEgit/Surgery-Robot-Detection-Segmentation) by the NUS Control & Mechatronics Lab.
+![Surgery Robot Detection and Segmentation](https://github.com/SUYEgit/Surgery-Robot-Detection-Segmentation/raw/master/assets/video.gif)
+
+### [Mapping Challenge](https://github.com/crowdAI/crowdai-mapping-challenge-mask-rcnn): Convert satellite imagery to maps for use by humanitarian organisations.
+![Mapping Challenge](assets/mapping_challenge.png)
+
+### [GRASS GIS Addon](https://github.com/ctu-geoforall-lab/i.ann.maskrcnn) to generate vector masks from geospatial imagery. Based on a [Master's thesis](https://github.com/ctu-geoforall-lab-projects/dp-pesek-2018) by Ondřej Pešek.
+![GRASS GIS Image](https://github.com/ctu-geoforall-lab/i.ann.maskrcnn/raw/master/samples/out3.png)
