@@ -57,7 +57,7 @@ class AirbusConfig(Config):
     IMAGES_PER_GPU = 6
 
     # Uncomment to train on 8 GPUs (default is 1)
-    # GPU_COUNT = 8
+    GPU_COUNT = 1
 
     # Number of classes (including background)
     NUM_CLASSES = 1 + 1  # 
