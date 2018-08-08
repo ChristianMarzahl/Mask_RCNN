@@ -86,7 +86,14 @@ class AirbusInferenceConfig(AirbusConfig):
     # You can increase this during training to generate more propsals.
     RPN_NMS_THRESHOLD = 0.7
 
-    IMAGES_PER_GPU = 6
+    IMAGES_PER_GPU = 12
+
+    # Minimum probability value to accept a detected instance
+    # ROIs below this threshold are skipped
+    DETECTION_MIN_CONFIDENCE = 0.99
+
+    # Non-maximum suppression threshold for detection
+    DETECTION_NMS_THRESHOLD = 0.3
 
 
 
