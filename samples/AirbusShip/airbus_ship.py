@@ -73,6 +73,8 @@ class AirbusConfig(Config):
     IMAGE_MIN_DIM = 768
     IMAGE_MAX_DIM = 768
 
+    LEARNING_RATE = 0.01
+
 
 class AirbusInferenceConfig(AirbusConfig):
     # Set batch size to 1 to run one image at a time
@@ -86,11 +88,11 @@ class AirbusInferenceConfig(AirbusConfig):
     # You can increase this during training to generate more propsals.
     RPN_NMS_THRESHOLD = 0.7
 
-    IMAGES_PER_GPU = 12
+    IMAGES_PER_GPU = 4
 
     # Minimum probability value to accept a detected instance
     # ROIs below this threshold are skipped
-    DETECTION_MIN_CONFIDENCE = 0.99
+    DETECTION_MIN_CONFIDENCE = 0.95
 
     # Non-maximum suppression threshold for detection
     DETECTION_NMS_THRESHOLD = 0.3
@@ -235,7 +237,7 @@ def detect(model, data, config):
             for line in lines:
                 out_pred_rows += [{'ImageId': id, 'EncodedPixels': line.split(',')[1]}]
 
-            if len(lines[0].split(',')[1]) > 1:
+            if False and len(lines[0].split(',')[1]) > 1:
                 visualize.display_instances(
                     images[index], r['rois'], r['masks'], r['class_ids'],
                     ['bg', 'ship'], r['scores'],
