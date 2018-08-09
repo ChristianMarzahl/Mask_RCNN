@@ -73,7 +73,7 @@ class AirbusConfig(Config):
     IMAGE_MIN_DIM = 768
     IMAGE_MAX_DIM = 768
 
-    LEARNING_RATE = 0.01
+    LEARNING_RATE = 0.001
 
 
 class AirbusInferenceConfig(AirbusConfig):
@@ -92,7 +92,7 @@ class AirbusInferenceConfig(AirbusConfig):
 
     # Minimum probability value to accept a detected instance
     # ROIs below this threshold are skipped
-    DETECTION_MIN_CONFIDENCE = 0.95
+    DETECTION_MIN_CONFIDENCE = 0.9
 
     # Non-maximum suppression threshold for detection
     DETECTION_NMS_THRESHOLD = 0.3
@@ -210,10 +210,20 @@ def train(model, data, config):
 ############################################################
 
 def detect(model, data, config):
-    
-    out_pred_rows = []
-    for id, path, codes in tqdm(data):
-        out_pred_rows += [{'ImageId': id, 'EncodedPixels': None}]
+
+    csv_results  = {0.9: None,
+                    0.95: None,
+                    0.99: None,
+                    0.995: None}
+
+    for key, value in csv_results.items():
+
+        out_pred_rows = []
+        for id, path, codes in tqdm(data):
+            out_pred_rows += [{'ImageId': id, 'EncodedPixels': None}]
+
+        csv_results[key] = out_pred_rows
+
 
     chunk_size = config.IMAGES_PER_GPU
     for i in tqdm(range(0, len(data), chunk_size)):
@@ -227,28 +237,43 @@ def detect(model, data, config):
         index = 0
         for data_element, r in zip(sub_data, result_batch):
 
-            id, path, codes = data_element
-            lines = mask_to_rle(id, r["masks"], r["scores"])
+            for min_score, out_pred_rows in csv_results.items():
 
-            duplicates = [row for row in out_pred_rows if row["ImageId"] == id and row['EncodedPixels'] == None]
-            for duplicate in duplicates:
-                out_pred_rows.remove(duplicate)
+                score_indexes = np.where(r["scores"] > min_score)[0]
 
-            for line in lines:
-                out_pred_rows += [{'ImageId': id, 'EncodedPixels': line.split(',')[1]}]
+                if len(score_indexes) == 0:
+                    continue
 
-            if False and len(lines[0].split(',')[1]) > 1:
-                visualize.display_instances(
-                    images[index], r['rois'], r['masks'], r['class_ids'],
-                    ['bg', 'ship'], r['scores'],
-                    show_bbox=False, show_mask=False,
-                    title="Predictions")
-                plt.savefig("../../{}/{}.png".format("results", id.split('.')[0]))
+                masks = r["masks"][:,:,score_indexes]
+                scores = r["scores"][score_indexes]
+                rois = r["rois"][score_indexes]
+                class_ids = r["class_ids"][score_indexes]
+
+                id, path, codes = data_element
+                lines = mask_to_rle(id, masks, scores)
+
+                duplicates = [row for row in out_pred_rows if row["ImageId"] == id and row['EncodedPixels'] == None]
+                for duplicate in duplicates:
+                    out_pred_rows.remove(duplicate)
+
+                for line in lines:
+                    out_pred_rows += [{'ImageId': id, 'EncodedPixels': line.split(',')[1]}]
+
+                if False and len(lines[0].split(',')[1]) > 1:
+                    visualize.display_instances(
+                        images[index], rois, masks, class_ids,
+                        ['bg', 'ship'], scores,
+                        show_bbox=False, show_mask=False,
+                        title="Predictions")
+                    plt.savefig("../../{}/{}_{}.png".format("results",str(min_score).replace('.',"_"), id.split('.')[0]))
+
+
+                submission_df = pd.DataFrame(out_pred_rows)[['ImageId', 'EncodedPixels']]
+                submission_df.to_csv('{0}.csv'.format(str(min_score).replace('.',"_") ), index=False)
+
+                csv_results[min_score] = out_pred_rows
 
             index += 1
-
-        submission_df = pd.DataFrame(out_pred_rows)[['ImageId', 'EncodedPixels']]
-        submission_df.to_csv('submission_2.csv', index=False)
 
         
 ############################################################
