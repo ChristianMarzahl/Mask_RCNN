@@ -18,7 +18,9 @@ from imgaug import augmenters as iaa
 import pandas as pd
 from sklearn.model_selection import KFold
 from tqdm import tqdm
-
+import bcolz
+import random as rnd
+import cv2
 
 # Root directory of the project
 ROOT_DIR = os.path.abspath("../../")
@@ -108,12 +110,49 @@ class AirbusShipDataset(utils.Dataset):
     def load_airbus_ship(self, data):
         self.add_class("ship", 1, "ship")
 
+        self.chips = bcolz.open("chips", mode='r')
+
         for idname, ipath, codes in data:
+
+            chip_indexes = []
+            chip_boxes = []
+            if str(codes[0]) == "nan":
+
+                number_of_chips_to_add = 15
+
+                partition_index = rnd.randint(0, len(self.chips.partitions) - 1)
+                chip_indexes = rnd.sample(range(self.chips.partitions[partition_index][0],
+                                                self.chips.partitions[partition_index][1]), number_of_chips_to_add)
+
+                chips_to_add = self.chips[chip_indexes]
+
+                for chip_item in chips_to_add:
+                    x1, x2, y1, y2 = chip_item["x1"], chip_item["x2"], chip_item["y1"], chip_item["y2"]
+
+                    chip_width = x2 - x1
+                    chip_height = y2 - y1
+
+                    loop_counter = 0
+                    while loop_counter < 100:
+
+                        x_start = rnd.randint(0, 768 - chip_width)
+                        y_start = rnd.randint(0, 768 - chip_height)
+
+                        rect_a = [x_start, x_start + chip_width, y_start, y_start + chip_height]
+
+                        if len([rect_b for rect_b in chip_boxes if self.overlap(rect_a, rect_b)]) == 0:
+                            chip_boxes.append(rect_a)
+                            break
+                        loop_counter += 1
+
+
             self.add_image(
                 "ship",
                 image_id=idname,
                 path=ipath, 
-                codes=codes)
+                codes=codes,
+                chip_indexes=chip_indexes,
+                chip_boxes=chip_boxes)
 
     def load_mask(self, image_id):
         image_info = self.image_info[image_id]
@@ -123,10 +162,67 @@ class AirbusShipDataset(utils.Dataset):
         masks = np.moveaxis(masks, 0, -1)
 
         if masks.max() < 1:
+            masks = []
+
+        for chip_item, chip_box in zip(self.chips[image_info["chip_indexes"]], image_info["chip_boxes"]):
+            chip_mask = chip_item["mask"]
+            (x_start, x_end, y_start, y_end) = chip_box
+
+            new_mask = np.zeros((768, 768))
+            new_mask[y_start: y_end, x_start: x_end] = chip_mask
+
+            masks.append(new_mask)
+
+        if type(masks) is list:
+            masks = np.moveaxis(np.array(masks), 0, -1)
+
+        if masks.max() < 1:
             return masks, np.zeros_like([masks.shape[-1]], dtype=np.int32)
         else:
             return masks, np.ones([masks.shape[-1]], dtype=np.int32)
 
+    def load_image(self, image_id):
+        """Load the specified image and return a [H,W,3] Numpy array.
+        """
+        # Load image
+
+        image_info = self.image_info[image_id]
+        path = image_info['path']
+        image = skimage.io.imread(path)
+
+        for chip_item, chip_box in zip(self.chips[image_info["chip_indexes"]], image_info["chip_boxes"]):
+            chip_mask = chip_item["mask"]
+            chip = chip_item["image"]
+            (x_start, x_end, y_start, y_end) = chip_box
+
+            chip_height = y_end - y_start
+            chip_width = x_end - x_start
+
+            chip_mask_inv = cv2.bitwise_not(chip_mask) - 254
+            chip_mask_rgb = cv2.bitwise_and(chip, chip, mask=chip_mask)
+
+            river = image[y_start: y_start + chip_height, x_start: x_start + chip_width]
+            river_mask = cv2.bitwise_and(river, river, mask=chip_mask_inv)
+
+            result = cv2.add(river_mask, chip_mask_rgb)
+            image[y_start: y_start + chip_height, x_start: x_start + chip_width] = result
+
+
+        return image
+
+    def overlap(self, rect_a, rect_b):
+
+        def range_overlap(a_min, a_max, b_min, b_max):
+            '''
+            Neither range is completely greater than the other
+            '''
+            return (a_min <= b_max) and (b_min <= a_max)
+
+        x1_a, x2_a, y1_a, y2_a = rect_a
+        x1_b, x2_b, y1_b, y2_b = rect_b
+
+        return range_overlap(x1_a, x2_a, x1_b, x2_b) \
+               and range_overlap(y1_a, y2_a, y1_b, y2_b)
 
     def rle_decode(self, mask_rle, shape):
         '''
@@ -163,10 +259,29 @@ def train(model, data, config):
     train_data = data[:int(len(data) * 0.9)]
     val_data = data[int(len(data) * 0.9):]
 
+    #remove empty images
+    train_data = [row for row in train_data if str(row[2][0]) != "nan"]
+    #val_data = [row for row in val_data if str(row[2][0]) != "nan"]
+
+    # remove images without ships from val and add it to training
+    train_data += [row for row in val_data if str(row[2][0]) == "nan"][:1000]
+    val_data = [row for row in val_data if str(row[2][0]) != "nan"]
+
     dataset_train = AirbusShipDataset()
     dataset_train.load_airbus_ship(train_data)
     # Must call before using the dataset
     dataset_train.prepare()
+
+    # Load and display random samples# Load
+
+    image_ids = np.random.choice(dataset_train.image_ids, 4)
+    for image_id in image_ids:
+        image = dataset_train.load_image(image_id)
+        mask, class_ids = dataset_train.load_mask(image_id)
+        visualize.display_top_masks(image, mask, class_ids, dataset_train.class_names)
+
+        plt.savefig("temp/{}.png".format(image_id))
+
     
     dataset_val = AirbusShipDataset()
     dataset_val.load_airbus_ship(val_data)
