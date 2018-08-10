@@ -56,7 +56,7 @@ class AirbusConfig(Config):
 
     # We use a GPU with 12GB memory, which can fit two images.
     # Adjust down if you use a smaller GPU.
-    IMAGES_PER_GPU = 6
+    IMAGES_PER_GPU = 5
 
     # Uncomment to train on 8 GPUs (default is 1)
     GPU_COUNT = 1
@@ -110,21 +110,22 @@ class AirbusShipDataset(utils.Dataset):
     def load_airbus_ship(self, data):
         self.add_class("ship", 1, "ship")
 
-        self.chips = bcolz.open("chips", mode='r')
+        ships = bcolz.open("chips", mode='r')
 
         for idname, ipath, codes in data:
 
             chip_indexes = []
             chip_boxes = []
+            chips_to_add  = []
             if str(codes[0]) == "nan":
 
                 number_of_chips_to_add = 15
 
-                partition_index = rnd.randint(0, len(self.chips.partitions) - 1)
-                chip_indexes = rnd.sample(range(self.chips.partitions[partition_index][0],
-                                                self.chips.partitions[partition_index][1]), number_of_chips_to_add)
+                partition_index = rnd.randint(0, len(ships.partitions) - 1)
+                chip_indexes = rnd.sample(range(ships.partitions[partition_index][0],
+                                                ships.partitions[partition_index][1]), number_of_chips_to_add)
 
-                chips_to_add = self.chips[chip_indexes]
+                chips_to_add = ships[chip_indexes]
 
                 for chip_item in chips_to_add:
                     x1, x2, y1, y2 = chip_item["x1"], chip_item["x2"], chip_item["y1"], chip_item["y2"]
@@ -151,7 +152,7 @@ class AirbusShipDataset(utils.Dataset):
                 image_id=idname,
                 path=ipath, 
                 codes=codes,
-                chip_indexes=chip_indexes,
+                chip_indexes=chips_to_add,
                 chip_boxes=chip_boxes)
 
     def load_mask(self, image_id):
@@ -164,7 +165,7 @@ class AirbusShipDataset(utils.Dataset):
         if masks.max() < 1:
             masks = []
 
-        for chip_item, chip_box in zip(self.chips[image_info["chip_indexes"]], image_info["chip_boxes"]):
+        for chip_item, chip_box in zip(image_info["chip_indexes"], image_info["chip_boxes"]):
             chip_mask = chip_item["mask"]
             (x_start, x_end, y_start, y_end) = chip_box
 
@@ -191,7 +192,8 @@ class AirbusShipDataset(utils.Dataset):
         image = skimage.io.imread(path)
         #image = cv2.imread(path)[:, :, (2, 1, 0)]
 
-        for chip_item, chip_box in zip(self.chips[image_info["chip_indexes"]], image_info["chip_boxes"]):
+
+        for chip_item, chip_box in zip(image_info["chip_indexes"], image_info["chip_boxes"]):
             chip_mask = chip_item["mask"]
             chip = chip_item["image"]
             (x_start, x_end, y_start, y_end) = chip_box
@@ -265,7 +267,7 @@ def train(model, data, config):
     #val_data = [row for row in val_data if str(row[2][0]) != "nan"]
 
     # remove images without ships from val and add it to training
-    train_data = [row for row in val_data if str(row[2][0]) == "nan"][:1000]
+    train_data += [row for row in val_data if str(row[2][0]) == "nan"][:5000]
     val_data = [row for row in val_data if str(row[2][0]) != "nan"]
 
     dataset_train = AirbusShipDataset()
