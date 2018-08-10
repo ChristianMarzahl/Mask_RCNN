@@ -94,7 +94,7 @@ class AirbusInferenceConfig(AirbusConfig):
 
     # Minimum probability value to accept a detected instance
     # ROIs below this threshold are skipped
-    DETECTION_MIN_CONFIDENCE = 0.9
+    DETECTION_MIN_CONFIDENCE = 0.99
 
     # Non-maximum suppression threshold for detection
     DETECTION_NMS_THRESHOLD = 0.3
@@ -189,6 +189,7 @@ class AirbusShipDataset(utils.Dataset):
         image_info = self.image_info[image_id]
         path = image_info['path']
         image = skimage.io.imread(path)
+        #image = cv2.imread(path)[:, :, (2, 1, 0)]
 
         for chip_item, chip_box in zip(self.chips[image_info["chip_indexes"]], image_info["chip_boxes"]):
             chip_mask = chip_item["mask"]
@@ -264,7 +265,7 @@ def train(model, data, config):
     #val_data = [row for row in val_data if str(row[2][0]) != "nan"]
 
     # remove images without ships from val and add it to training
-    train_data += [row for row in val_data if str(row[2][0]) == "nan"][:1000]
+    train_data = [row for row in val_data if str(row[2][0]) == "nan"][:1000]
     val_data = [row for row in val_data if str(row[2][0]) != "nan"]
 
     dataset_train = AirbusShipDataset()
@@ -326,10 +327,12 @@ def train(model, data, config):
 
 def detect(model, data, config):
 
-    csv_results  = {0.9: None,
-                    0.95: None,
+    csv_results  = {
+                    #0.9: None,
+                    #0.95: None,
                     0.99: None,
-                    0.995: None}
+                    0.995: None,
+                    0.999: None}
 
     for key, value in csv_results.items():
 
