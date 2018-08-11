@@ -77,7 +77,7 @@ class AirbusConfig(Config):
     IMAGE_MAX_DIM = 768 / 2
     IMAGE_MAX_DIM = 768 / 2
 
-    OPTIMIZER = "AdamW"
+    OPTIMIZER = "sgd"
     LEARNING_RATE = 0.001
 
     FPN_CLASSIF_FC_LAYERS_SIZE = 256
