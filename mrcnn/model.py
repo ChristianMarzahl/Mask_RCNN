@@ -25,6 +25,7 @@ import keras.engine as KE
 import keras.models as KM
 from tensorflow.contrib.opt.python.training import weight_decay_optimizers
 
+
 from mrcnn import utils
 
 # Requires TensorFlow 1.3+ and Keras 2.0.8+.
@@ -2165,9 +2166,12 @@ class MaskRCNN():
         """
         # Optimizer object
         if self.config.OPTIMIZER == "sgd":
+            optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+            """
             optimizer = keras.optimizers.SGD(
                 lr=learning_rate, momentum=momentum,
                 clipnorm=self.config.GRADIENT_CLIP_NORM)
+            """
         elif self.config.OPTIMIZER == "AdamW":
             optimizer = weight_decay_optimizers.AdamWOptimizer(weight_decay=0.001, learning_rate=learning_rate)
 

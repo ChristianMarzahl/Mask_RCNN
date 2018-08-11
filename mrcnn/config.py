@@ -171,6 +171,7 @@ class Config(object):
     # The Mask RCNN paper uses lr=0.02, but on TensorFlow it causes
     # weights to explode. Likely due to differences in optimizer
     # implementation.
+    OPTIMIZER = "sgd"
     LEARNING_RATE = 0.001
     LEARNING_MOMENTUM = 0.9
 
@@ -202,8 +203,6 @@ class Config(object):
 
     # Gradient norm clipping
     GRADIENT_CLIP_NORM = 5.0
-
-    OPTIMIZER = "sgd"
 
 
     def __init__(self):
