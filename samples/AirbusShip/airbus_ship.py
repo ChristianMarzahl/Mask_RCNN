@@ -32,6 +32,8 @@ from mrcnn import utils
 from mrcnn import model as modellib
 from mrcnn import visualize
 
+from mrcnn.learning_rate.CyclicLR import CyclicLR
+
 # Path to trained weights file
 COCO_WEIGHTS_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
 
@@ -52,11 +54,11 @@ RESULTS_DIR = os.path.join(ROOT_DIR, "results/airbus_ship/")
 class AirbusConfig(Config):
     
     # Give the configuration a recognizable name
-    NAME = "airbus_chip"
+    NAME = "airbus_ship"
 
     # We use a GPU with 12GB memory, which can fit two images.
     # Adjust down if you use a smaller GPU.
-    IMAGES_PER_GPU = 5
+    IMAGES_PER_GPU = 8
 
     # Uncomment to train on 8 GPUs (default is 1)
     GPU_COUNT = 1
@@ -71,11 +73,13 @@ class AirbusConfig(Config):
 
     BACKBONE = "resnet50"
     
-    IMAGE_RESIZE_MODE = "pad64"
-    IMAGE_MIN_DIM = 768
-    IMAGE_MAX_DIM = 768
+    IMAGE_RESIZE_MODE = "square"# "pad64"
+    IMAGE_MAX_DIM = 768 / 2
+    IMAGE_MAX_DIM = 768 / 2
 
     LEARNING_RATE = 0.001
+
+    FPN_CLASSIF_FC_LAYERS_SIZE = 256
 
 
 class AirbusInferenceConfig(AirbusConfig):
@@ -125,9 +129,7 @@ class AirbusShipDataset(utils.Dataset):
                 chip_indexes = rnd.sample(range(ships.partitions[partition_index][0],
                                                 ships.partitions[partition_index][1]), number_of_chips_to_add)
 
-                chips_to_add = ships[chip_indexes]
-
-                for chip_item in chips_to_add:
+                for chip_item in ships[chip_indexes]:
                     x1, x2, y1, y2 = chip_item["x1"], chip_item["x2"], chip_item["y1"], chip_item["y2"]
 
                     chip_width = x2 - x1
@@ -143,6 +145,7 @@ class AirbusShipDataset(utils.Dataset):
 
                         if len([rect_b for rect_b in chip_boxes if self.overlap(rect_a, rect_b)]) == 0:
                             chip_boxes.append(rect_a)
+                            chips_to_add.append(chip_item)
                             break
                         loop_counter += 1
 
@@ -267,7 +270,7 @@ def train(model, data, config):
     #val_data = [row for row in val_data if str(row[2][0]) != "nan"]
 
     # remove images without ships from val and add it to training
-    train_data += [row for row in val_data if str(row[2][0]) == "nan"][:5000]
+    train_data += [row for row in val_data if str(row[2][0]) == "nan"]#[:5000]
     val_data = [row for row in val_data if str(row[2][0]) != "nan"]
 
     dataset_train = AirbusShipDataset()
@@ -276,15 +279,18 @@ def train(model, data, config):
     dataset_train.prepare()
 
     # Load and display random samples# Load
-
-    image_ids = np.random.choice(dataset_train.image_ids, 4)
-    for image_id in image_ids:
+    """
+    image_ids = dataset_train.image_ids# np.random.choice(dataset_train.image_ids, 4)
+    for image_id in image_ids[:100]:
+        print(image_id)
         image = dataset_train.load_image(image_id)
         mask, class_ids = dataset_train.load_mask(image_id)
+
+
         visualize.display_top_masks(image, mask, class_ids, dataset_train.class_names)
 
         plt.savefig("temp/{}.png".format(image_id))
-
+    """
     
     dataset_val = AirbusShipDataset()
     dataset_val.load_airbus_ship(val_data)
@@ -305,6 +311,8 @@ def train(model, data, config):
     ])
 
     # *** This training schedule is an example. Update to your needs ***
+    lr_callback = [CyclicLR(base_lr=0.0001, max_lr=0.01, step_size=250)]
+
 
     # If starting from imagenet, train heads only for a bit
     # since they have random weights
@@ -313,14 +321,16 @@ def train(model, data, config):
                 learning_rate=config.LEARNING_RATE,
                 epochs=20,
                 augmentation=augmentation,
-                layers='heads')
+                layers='heads',
+                custom_callbacks=lr_callback)
 
     print("Train all layers")
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE,
                 epochs=40,
                 augmentation=augmentation,
-                layers='5+')
+                layers='5+',
+                custom_callbacks=lr_callback)
 
 
 ############################################################

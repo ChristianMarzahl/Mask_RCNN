@@ -23,6 +23,7 @@ import keras.backend as K
 import keras.layers as KL
 import keras.engine as KE
 import keras.models as KM
+from tensorflow.contrib.opt.python.training import weight_decay_optimizers
 
 from mrcnn import utils
 
@@ -2163,9 +2164,13 @@ class MaskRCNN():
         metrics. Then calls the Keras compile() function.
         """
         # Optimizer object
-        optimizer = keras.optimizers.SGD(
-            lr=learning_rate, momentum=momentum,
-            clipnorm=self.config.GRADIENT_CLIP_NORM)
+        if self.config.OPTIMIZER == "sgd":
+            optimizer = keras.optimizers.SGD(
+                lr=learning_rate, momentum=momentum,
+                clipnorm=self.config.GRADIENT_CLIP_NORM)
+        elif self.config.OPTIMIZER == "AdamW":
+            optimizer = weight_decay_optimizers.AdamWOptimizer(weight_decay=0.001, learning_rate=learning_rate)
+
         # Add Losses
         # First, clear previously set losses to avoid duplication
         self.keras_model._losses = []

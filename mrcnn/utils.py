@@ -460,10 +460,10 @@ def resize_image(image, min_dim=None, max_dim=None, min_scale=None, mode="square
     if mode == "square":
         # Get new height and width
         h, w = image.shape[:2]
-        top_pad = (max_dim - h) // 2
-        bottom_pad = max_dim - h - top_pad
-        left_pad = (max_dim - w) // 2
-        right_pad = max_dim - w - left_pad
+        top_pad = int((max_dim - h) // 2)
+        bottom_pad = int(max_dim - h - top_pad)
+        left_pad = int((max_dim - w) // 2)
+        right_pad = int(max_dim - w - left_pad)
         padding = [(top_pad, bottom_pad), (left_pad, right_pad), (0, 0)]
         image = np.pad(image, padding, mode='constant', constant_values=0)
         window = (top_pad, left_pad, h + top_pad, w + left_pad)
