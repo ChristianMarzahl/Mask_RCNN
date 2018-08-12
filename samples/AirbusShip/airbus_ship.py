@@ -58,7 +58,7 @@ class AirbusConfig(Config):
 
     # We use a GPU with 12GB memory, which can fit two images.
     # Adjust down if you use a smaller GPU.
-    IMAGES_PER_GPU = 8
+    IMAGES_PER_GPU = 4
 
     # Uncomment to train on 8 GPUs (default is 1)
     GPU_COUNT = 1
@@ -74,13 +74,13 @@ class AirbusConfig(Config):
     BACKBONE = "resnet50"
     
     IMAGE_RESIZE_MODE = "square"# "pad64"
-    IMAGE_MAX_DIM = 768 / 2
-    IMAGE_MAX_DIM = 768 / 2
+    IMAGE_MAX_DIM = 768
+    IMAGE_MAX_DIM = 768
 
     OPTIMIZER = "sgd"
     LEARNING_RATE = 0.001
 
-    FPN_CLASSIF_FC_LAYERS_SIZE = 256
+    #FPN_CLASSIF_FC_LAYERS_SIZE = 256
 
 
 class AirbusInferenceConfig(AirbusConfig):
@@ -263,16 +263,16 @@ class AirbusShipDataset(utils.Dataset):
 def train(model, data, config):
     """Train the model."""
     # Training dataset.
-    train_data = data[:int(len(data) * 0.9)]
-    val_data = data[int(len(data) * 0.9):]
 
-    #remove empty images
-    train_data = [row for row in train_data if str(row[2][0]) != "nan"]
-    #val_data = [row for row in val_data if str(row[2][0]) != "nan"]
+    data_ships = [row for row in data if str(row[2][0]) != "nan"]
+    data_no_ships = [row for row in data if str(row[2][0]) == "nan"]
 
-    # remove images without ships from val and add it to training
-    train_data += [row for row in val_data if str(row[2][0]) == "nan"]#[:5000]
-    val_data = [row for row in val_data if str(row[2][0]) != "nan"]
+    train_data = data_ships[:int(len(data_ships) * 0.9)]
+    val_data = data_ships[int(len(data_ships) * 0.9):]
+
+    #  add images without ships to training
+    train_data += data_no_ships[:10000]
+
 
     dataset_train = AirbusShipDataset()
     dataset_train.load_airbus_ship(train_data)
@@ -307,12 +307,12 @@ def train(model, data, config):
         iaa.OneOf([iaa.Affine(rotate=90),
                    iaa.Affine(rotate=180),
                    iaa.Affine(rotate=270)]),
-        #iaa.Multiply((0.8, 1.5)),
-        #iaa.GaussianBlur(sigma=(0.0, 5.0))
+        iaa.Multiply((0.8, 1.5)),
+        iaa.GaussianBlur(sigma=(0.0, 5.0))
     ])
 
     # *** This training schedule is an example. Update to your needs ***
-    lr_callback = [CyclicLR(base_lr=0.0001, max_lr=0.01, step_size=250)]
+    lr_callback = [CyclicLR(base_lr=0.00001, max_lr=0.001, step_size=250)]
 
 
     # If starting from imagenet, train heads only for a bit
@@ -320,7 +320,7 @@ def train(model, data, config):
     print("Train network heads")
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE,
-                epochs=20,
+                epochs=5,
                 augmentation=augmentation,
                 layers='heads',
                 custom_callbacks=lr_callback)
@@ -328,12 +328,18 @@ def train(model, data, config):
     print("Train all layers")
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE,
-                epochs=40,
+                epochs=15,
                 augmentation=augmentation,
                 layers='5+',
                 custom_callbacks=lr_callback)
 
-
+    print("Train all layers")
+    model.train(dataset_train, dataset_val,
+                learning_rate=config.LEARNING_RATE,
+                epochs=30,
+                augmentation=augmentation,
+                layers='4+',
+                custom_callbacks=lr_callback)
 ############################################################
 #  Detection
 ############################################################
