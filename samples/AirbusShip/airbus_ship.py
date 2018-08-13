@@ -308,7 +308,7 @@ def train(model, data, config):
                    iaa.Affine(rotate=180),
                    iaa.Affine(rotate=270)]),
         iaa.Multiply((0.8, 1.5)),
-        iaa.GaussianBlur(sigma=(0.0, 5.0))
+        iaa.GaussianBlur(sigma=(0.0, 2.0))
     ])
 
     # *** This training schedule is an example. Update to your needs ***
@@ -336,7 +336,7 @@ def train(model, data, config):
     print("Train all layers")
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE,
-                epochs=30,
+                epochs=50,
                 augmentation=augmentation,
                 layers='4+',
                 custom_callbacks=lr_callback)
@@ -402,7 +402,7 @@ def detect(model, data, config):
                         ['bg', 'ship'], scores,
                         show_bbox=False, show_mask=False,
                         title="Predictions")
-                    plt.savefig("../../{}/{}_{}.png".format("results",str(min_score).replace('.',"_"), id.split('.')[0]))
+                    plt.savefig("../../{}/{}_{}.png".format("results", id.split('.')[0],str(min_score).replace('.',"_")))
 
 
                 submission_df = pd.DataFrame(out_pred_rows)[['ImageId', 'EncodedPixels']]
