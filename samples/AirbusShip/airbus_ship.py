@@ -54,7 +54,7 @@ RESULTS_DIR = os.path.join(ROOT_DIR, "results/airbus_ship/")
 class AirbusConfig(Config):
     
     # Give the configuration a recognizable name
-    NAME = "airbus_ship"
+    NAME = "airbus_ship_resnet101_"
 
     # We use a GPU with 12GB memory, which can fit two images.
     # Adjust down if you use a smaller GPU.
@@ -71,7 +71,7 @@ class AirbusConfig(Config):
     USE_MINI_MASK = True
     MINI_MASK_SHAPE = (102, 102) #(56, 56)  # (height, width) of the mini-mask
 
-    BACKBONE = "resnet50"
+    BACKBONE = "resnet101"# "resnet50"
     
     IMAGE_RESIZE_MODE = "square"# "pad64"
     IMAGE_MAX_DIM = 768
@@ -103,7 +103,7 @@ class AirbusInferenceConfig(AirbusConfig):
 
     # Minimum probability value to accept a detected instance
     # ROIs below this threshold are skipped
-    DETECTION_MIN_CONFIDENCE = 0.99
+    DETECTION_MIN_CONFIDENCE = 0.95
 
     # Non-maximum suppression threshold for detection
     DETECTION_NMS_THRESHOLD = 0.3
@@ -359,10 +359,11 @@ def detect(model, data, config):
     csv_results  = {
                     #0.7: None,
                     #0.9: None,
-                    #0.95: None,
+                    0.95: None,
+                    0.97: None,
                     0.99: None,
                     0.995: None,
-                    0.999: None
+                    #0.999: None
                     }
 
     for key, value in csv_results.items():
