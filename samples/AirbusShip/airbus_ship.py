@@ -69,7 +69,7 @@ class AirbusConfig(Config):
     # If enabled, resizes instance masks to a smaller size to reduce
     # memory load. Recommended when using high-resolution images.
     USE_MINI_MASK = True
-    MINI_MASK_SHAPE = (56, 56)  # (height, width) of the mini-mask
+    MINI_MASK_SHAPE = (102, 102) #(56, 56)  # (height, width) of the mini-mask
 
     BACKBONE = "resnet50"
     
@@ -79,6 +79,10 @@ class AirbusConfig(Config):
 
     OPTIMIZER = "sgd"
     LEARNING_RATE = 0.001
+
+    # Non-max suppression threshold to filter RPN proposals.
+    # You can increase this during training to generate more propsals.
+    RPN_NMS_THRESHOLD = 0.9
 
     #FPN_CLASSIF_FC_LAYERS_SIZE = 256
 
@@ -308,7 +312,13 @@ def train(model, data, config):
                    iaa.Affine(rotate=180),
                    iaa.Affine(rotate=270)]),
         iaa.Multiply((0.8, 1.5)),
-        iaa.GaussianBlur(sigma=(0.0, 2.0))
+        iaa.GaussianBlur(sigma=(0.0, 2.0)),
+        #iaa.CropAndPad(percent=(-0.25, 0.25)),
+        iaa.Grayscale(alpha=(0.0, 1.0)),
+        #iaa.Sharpen(alpha=(0.0, 1.0), lightness=(0.75, 2.0)),
+        #iaa.Dropout(p=(0, 0.2)),
+        #iaa.ContrastNormalization((0.5, 1.5)),
+        #iaa.Affine(scale=(0.5, 1))
     ])
 
     # *** This training schedule is an example. Update to your needs ***
@@ -320,7 +330,7 @@ def train(model, data, config):
     print("Train network heads")
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE,
-                epochs=5,
+                epochs=1,
                 augmentation=augmentation,
                 layers='heads',
                 custom_callbacks=lr_callback)
@@ -328,7 +338,7 @@ def train(model, data, config):
     print("Train all layers")
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE,
-                epochs=15,
+                epochs=3,
                 augmentation=augmentation,
                 layers='5+',
                 custom_callbacks=lr_callback)
@@ -347,11 +357,13 @@ def train(model, data, config):
 def detect(model, data, config):
 
     csv_results  = {
+                    #0.7: None,
                     #0.9: None,
                     #0.95: None,
                     0.99: None,
                     0.995: None,
-                    0.999: None}
+                    0.999: None
+                    }
 
     for key, value in csv_results.items():
 
@@ -402,7 +414,7 @@ def detect(model, data, config):
                         ['bg', 'ship'], scores,
                         show_bbox=False, show_mask=False,
                         title="Predictions")
-                    plt.savefig("../../{}/{}_{}.png".format("results", id.split('.')[0],str(min_score).replace('.',"_")))
+                    plt.savefig("../../{}/{}_{}.png".format("results_2", id.split('.')[0],str(min_score).replace('.',"_")))
 
 
                 submission_df = pd.DataFrame(out_pred_rows)[['ImageId', 'EncodedPixels']]
